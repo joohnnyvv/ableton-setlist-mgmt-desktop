@@ -1,0 +1,12 @@
+.control-buttons-container {
+  margin-top: 20px;
+  display: flex;
+  gap: 20px;
+
+  .control-icon {
+    height: 22px;
+  }
+  .control-icon:hover {
+    transform: scale(1.2);
+  }
+}

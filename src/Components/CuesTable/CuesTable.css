@@ -1,0 +1,40 @@
+.cues-table {
+  font-size: 24px;
+
+  .selected {
+    font-weight: bold;
+  }
+
+  table {
+    border: solid 3px rgb(111, 111, 111);
+    border-radius: 6px;
+    border-spacing: 0px;
+
+    tbody {
+      tr {
+        cursor: move;
+
+        td:nth-child(3) {
+          cursor: pointer;
+        }
+      }
+    }
+    th {
+      padding: 8px;
+    }
+    td {
+      padding: 8px;
+    }
+    thead {
+      tr {
+        background-color: #878787 !important;
+      }
+    }
+    tr:nth-child(odd) {
+      background-color: #a9a9a9;
+    }
+    tr:nth-child(even) {
+      background-color: transparent;
+    }
+  }
+}
