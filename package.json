@@ -1,6 +1,6 @@
 {
-  "name": "ableton-setlist-mgmt-desktop",
-  "productName": "ableton-setlist-mgmt-desktop",
+  "name": "Ableton Setlist Management Desktop",
+  "productName": "Ableton Setlist Management Desktop",
   "version": "1.0.0",
   "description": "My Electron application description",
   "main": ".webpack/main",
@@ -40,6 +40,7 @@
   "keywords": [],
   "author": {
     "name": "Jan",
+    "surname": "Rembikowski",
     "email": "janekrembikowski@gmail.com"
   },
   "license": "MIT",
