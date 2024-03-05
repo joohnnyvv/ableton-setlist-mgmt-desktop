@@ -25,7 +25,7 @@ export default function Timer(props: TimerProps): JSX.Element {
   };
 
   useEffect(() => {
-    const intervalId = setInterval(fetchTime, 100);
+    const intervalId = setInterval(fetchTime, 10);
 
     return () => clearInterval(intervalId);
   }, []);
