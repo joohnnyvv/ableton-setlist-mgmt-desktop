@@ -54,6 +54,9 @@ export default function CuesTable(props: CuesTableProps): JSX.Element {
   };
 
   const findActiveSongIndex = () => {
+    if (!songCuePairs.length) {
+      return null;
+    }
     for (let i = 0; i < songCuePairs.length; i++) {
       const cue = songCuePairs[i].song[0];
       const endCue = songCuePairs[i].song[1];
@@ -67,7 +70,6 @@ export default function CuesTable(props: CuesTableProps): JSX.Element {
 
   const didSongFinish = () => {
     if (selectedSongIndex === null) return;
-
     const currentEndCue = songCuePairs[selectedSongIndex].song[1];
     const doesStop = songCuePairs[selectedSongIndex].doesStop;
 
@@ -89,12 +91,15 @@ export default function CuesTable(props: CuesTableProps): JSX.Element {
   };
 
   useEffect(() => {
-    if (!props.isPlaying) {
+    if (songCuePairs.length) {
       const activeSongIndex = findActiveSongIndex();
-      setSelectedSongIndex(activeSongIndex);
-      props.onSongSelected(songCuePairs[activeSongIndex]);
-    } else {
-      didSongFinish();
+      if (activeSongIndex !== null && !props.isPlaying) {
+        setSelectedSongIndex(activeSongIndex);
+        console.log(songCuePairs[activeSongIndex]);
+        props.onSongSelected(songCuePairs[activeSongIndex]);
+      } else {
+        didSongFinish();
+      }
     }
   }, [props.time, songCuePairs]);
 
