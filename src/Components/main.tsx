@@ -1,17 +1,35 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import "./main.css";
 import Header from "./Header/Header";
 import CuesTable from "./CuesTable/CuesTable";
-import Timer from "./Timer/Timer";
 import ControlButtons from "./ControlButtons/ControlButtons";
 import { StartStopPlaying } from "../Models/ApiTypes";
 import axios from "axios";
 import { apiPaths } from "../Constants/api";
 import { MergedCues } from "../Models/MergedCues";
+import { CurrentTime, isPlaying } from "../Models/ApiTypes";
 
 export default function Main() {
   const [isPlaying, setIsPlaying] = useState<boolean>();
   const [time, setTime] = useState<number>(0);
+  const fetchTime = async () => {
+    try {
+      const timeResponse = await axios.get<CurrentTime>(apiPaths.CURRENT_TIME);
+      const isPlayingResponse = await axios.get<isPlaying>(apiPaths.IS_PLAYING);
+      if (isPlayingResponse.data.isPlaying !== isPlaying) {
+        updateIsPlaying(isPlayingResponse.data.isPlaying);
+      }
+      updateTime(timeResponse.data.currentTime);
+    } catch (error) {
+      console.error(error);
+    }
+  };
+
+  useEffect(() => {
+    const intervalId = setInterval(fetchTime, 10);
+
+    return () => clearInterval(intervalId);
+  }, []);
 
   const startPlaying = async () => {
     try {
@@ -50,12 +68,6 @@ export default function Main() {
   return (
     <div className="container">
       <Header />
-      <Timer
-        updateIsPlaying={updateIsPlaying}
-        isPlaying={isPlaying}
-        updateTime={updateTime}
-        time={time}
-      />
       <CuesTable
         time={time}
         onSongSelected={handleSongSelected}

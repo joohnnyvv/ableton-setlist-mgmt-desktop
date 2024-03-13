@@ -16,7 +16,36 @@ interface CuesTableProps {
 }
 
 export default function CuesTable(props: CuesTableProps): JSX.Element {
-  const [songCuePairs, setSongCuePairs] = useState<MergedCues[]>([]);
+  const mockedArrayOfSongPairs: MergedCues[] = [
+    {
+      // Song 1
+      song: [
+        { id: "song1-start", name: "Song 1 Start", time: 0 },
+        { id: "song1-end", name: "Song 1 <end>", time: 185 },
+      ],
+      doesStop: true,
+    },
+    {
+      // Song 2
+      song: [
+        { id: "song2-start", name: "Song 2 Start", time: 0 },
+        { id: "song2-end", name: "Song 2 <end>", time: 230 },
+      ],
+      doesStop: false,
+    },
+    {
+      // Song 3
+      song: [
+        { id: "song3-start", name: "Song 3 Start", time: 0 },
+        { id: "song3-end", name: "Song 3 <end>", time: 152 },
+      ],
+      doesStop: true,
+    },
+    // ... Add more songs as needed
+  ];
+  const [songCuePairs, setSongCuePairs] = useState<MergedCues[]>(
+    mockedArrayOfSongPairs
+  );
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [selectedSongIndex, setSelectedSongIndex] = useState<number | null>(
     null
@@ -137,7 +166,7 @@ export default function CuesTable(props: CuesTableProps): JSX.Element {
 
   return (
     <div className="cues-table">
-      {isLoading && <h2>Loading...</h2>}
+      {/* {isLoading && <h2>Loading...</h2>} */}
       {songCuePairs.length > 0 ? (
         <table>
           <thead>
