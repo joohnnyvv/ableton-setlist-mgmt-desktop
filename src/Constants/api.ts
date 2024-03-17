@@ -7,4 +7,5 @@ export const apiPaths = {
     START_PLAYING: apiUrl + '/start-playing',
     STOP_PLAYING: apiUrl + '/stop-playing',
     SEND_CUE: apiUrl + '/send-cue',
+    GET_TEMPO: apiUrl + '/get-tempo'
 }

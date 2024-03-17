@@ -4,12 +4,21 @@ export interface Cue {
     time: number
 }
 
+export interface SendCueResponse {
+    message: string,
+    songTempo: number
+}
+
 export interface CurrentTime {
     currentTime: number
 }
 
 export interface StartStopPlaying {
     message: string
+}
+
+export interface SongTempo {
+    songTempo: number
 }
 
 export interface isPlaying {

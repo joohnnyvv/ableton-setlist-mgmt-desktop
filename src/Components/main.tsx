@@ -1,9 +1,14 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import "./main.css";
 import Header from "./Header/Header";
 import CuesTable from "./CuesTable/CuesTable";
 import ControlButtons from "./ControlButtons/ControlButtons";
-import { StartStopPlaying } from "../Models/ApiTypes";
+import {
+  StartStopPlaying,
+  SongTempo,
+  SendCueResponse,
+  Cue,
+} from "../Models/ApiTypes";
 import axios from "axios";
 import { apiPaths } from "../Constants/api";
 import { MergedCues } from "../Models/MergedCues";
@@ -11,30 +16,54 @@ import { CurrentTime, isPlaying } from "../Models/ApiTypes";
 
 export default function Main() {
   const [isPlaying, setIsPlaying] = useState<boolean>();
-  const [time, setTime] = useState<number>(0);
+  const [time, setTime] = useState(0);
+  const [beatInterval, setBeatInterval] = useState(0);
+  const [beatCounter, setBeatCounter] = useState(0);
+  const intervalIDRef = useRef<NodeJS.Timeout>(null);
+
   const fetchTime = async () => {
     try {
       const timeResponse = await axios.get<CurrentTime>(apiPaths.CURRENT_TIME);
-      const isPlayingResponse = await axios.get<isPlaying>(apiPaths.IS_PLAYING);
-      if (isPlayingResponse.data.isPlaying !== isPlaying) {
-        updateIsPlaying(isPlayingResponse.data.isPlaying);
-      }
-      updateTime(timeResponse.data.currentTime);
+      setTime(timeResponse.data.currentTime);
     } catch (error) {
       console.error(error);
     }
   };
 
-  useEffect(() => {
-    const intervalId = setInterval(fetchTime, 10);
+  const mergeCues = async (cues: Cue[]) => {
+    const pairs: MergedCues[] = [];
+    let currentSong: Cue = null;
 
-    return () => clearInterval(intervalId);
-  }, []);
+    cues
+      .sort((a, b) => a.time - b.time)
+      .forEach((cue) => {
+        if (cue.name.includes("<end>")) {
+          if (currentSong) {
+            pairs.push({
+              song: [currentSong, cue],
+              doesStop: true,
+              songLength: cue.time - currentSong.time,
+            });
+            currentSong = null;
+          }
+        } else {
+          currentSong = cue;
+        }
+      });
+    console.log(pairs);
+    return pairs;
+  };
+
+  const calculateBeatIntervalInMs = async (tempo: number) => {
+    if (tempo <= 0) throw new Error("Tempo must be greater than 0");
+    return (60 / tempo) * 1000;
+  };
 
   const startPlaying = async () => {
     try {
       await axios.get<StartStopPlaying>(apiPaths.START_PLAYING);
       setIsPlaying(true);
+      startBeatCounterInterval();
     } catch (error) {
       console.error(error);
     }
@@ -44,36 +73,59 @@ export default function Main() {
     try {
       await axios.get<StartStopPlaying>(apiPaths.STOP_PLAYING);
       setIsPlaying(false);
+      clearInterval(intervalIDRef.current);
+      intervalIDRef.current = null;
+      resetBeatCounter();
     } catch (error) {
       console.error(error);
     }
   };
 
-  const updateIsPlaying = (state: boolean) => {
-    setIsPlaying(state);
+  const startBeatCounterInterval = () => {
+    intervalIDRef.current = setInterval(() => {
+      setBeatCounter((prevCount) => {
+        console.log(prevCount + 1);
+        return prevCount + 1;
+      });
+      console.log(beatInterval);
+    }, beatInterval);
   };
 
-  const updateTime = (time: number) => {
-    setTime(time);
+  const resetBeatCounter = () => {
+    setBeatCounter(0);
   };
 
   const handleSongSelected = async (songPair: MergedCues) => {
     try {
-      await axios.post(apiPaths.SEND_CUE, songPair.song[0]);
+      const response = await axios.post(apiPaths.SEND_CUE, songPair.song[0]);
+      const resData: SendCueResponse = response.data;
+      const newBeatInterval = await calculateBeatIntervalInMs(
+        resData.songTempo
+      );
+      // TODO: state wont change in real time
+      setBeatInterval(newBeatInterval);
+      return resData;
     } catch (error) {
       console.error(error);
     }
   };
+
+  useEffect(() => {
+    return () => clearInterval(intervalIDRef.current);
+  }, []);
 
   return (
     <div className="container">
       <Header />
       <CuesTable
-        time={time}
         onSongSelected={handleSongSelected}
         isPlaying={isPlaying}
         stopPlaying={stopPlaying}
         startPlaying={startPlaying}
+        mergeCues={mergeCues}
+        beatCounter={beatCounter}
+        fetchTime={fetchTime}
+        time={time}
       />
       <ControlButtons
         startPlaying={startPlaying}

@@ -1,51 +1,25 @@
 import "./CuesTable.css";
 import React, { useEffect, useRef, useState, DragEvent } from "react";
 import axios from "axios";
-import { Cue } from "../../Models/ApiTypes";
+import { Cue, SendCueResponse } from "../../Models/ApiTypes";
 import { MergedCues } from "../../Models/MergedCues";
 import { apiPaths } from "../../Constants/api";
 import { IoStopwatchOutline } from "react-icons/io5";
 import { FaStop } from "react-icons/fa6";
 
 interface CuesTableProps {
-  time: number;
-  onSongSelected: (songPair: MergedCues) => void;
+  onSongSelected: (songPair: MergedCues) => Promise<SendCueResponse>;
   isPlaying: boolean;
   stopPlaying: () => Promise<void>;
   startPlaying: () => Promise<void>;
+  mergeCues: (cue: Cue[]) => Promise<MergedCues[]>;
+  beatCounter: number;
+  fetchTime: () => Promise<void>;
+  time: number;
 }
 
 export default function CuesTable(props: CuesTableProps): JSX.Element {
-  const mockedArrayOfSongPairs: MergedCues[] = [
-    {
-      // Song 1
-      song: [
-        { id: "song1-start", name: "Song 1 Start", time: 0 },
-        { id: "song1-end", name: "Song 1 <end>", time: 185 },
-      ],
-      doesStop: true,
-    },
-    {
-      // Song 2
-      song: [
-        { id: "song2-start", name: "Song 2 Start", time: 0 },
-        { id: "song2-end", name: "Song 2 <end>", time: 230 },
-      ],
-      doesStop: false,
-    },
-    {
-      // Song 3
-      song: [
-        { id: "song3-start", name: "Song 3 Start", time: 0 },
-        { id: "song3-end", name: "Song 3 <end>", time: 152 },
-      ],
-      doesStop: true,
-    },
-    // ... Add more songs as needed
-  ];
-  const [songCuePairs, setSongCuePairs] = useState<MergedCues[]>(
-    mockedArrayOfSongPairs
-  );
+  const [songCuePairs, setSongCuePairs] = useState<MergedCues[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [selectedSongIndex, setSelectedSongIndex] = useState<number | null>(
     null
@@ -54,26 +28,9 @@ export default function CuesTable(props: CuesTableProps): JSX.Element {
   const dragItem = useRef<any>(null);
   const dragOverItem = useRef<any>(null);
 
-  const createSongCuePairs = (cues: Cue[]) => {
-    const pairs: MergedCues[] = [];
-    let currentSong: Cue = null;
-
-    cues
-      .sort((a, b) => a.time - b.time)
-      .forEach((cue) => {
-        if (cue.name.includes("<end>")) {
-          if (currentSong) {
-            pairs.push({
-              song: [currentSong, cue],
-              doesStop: true,
-            });
-            currentSong = null;
-          }
-        } else {
-          currentSong = cue;
-        }
-      });
-    setSongCuePairs(pairs);
+  const createSongCuePairs = async (cues: Cue[]) => {
+    const mergedCues = await props.mergeCues(cues);
+    setSongCuePairs(mergedCues);
   };
 
   const toggleDoesStop = (index: number) => {
@@ -82,55 +39,39 @@ export default function CuesTable(props: CuesTableProps): JSX.Element {
     setSongCuePairs(updatedPairs);
   };
 
-  const findActiveSongIndex = () => {
-    if (!songCuePairs.length) {
-      return null;
-    }
-    for (let i = 0; i < songCuePairs.length; i++) {
-      const cue = songCuePairs[i].song[0];
-      const endCue = songCuePairs[i].song[1];
-
-      if (cue.time <= props.time && props.time <= endCue.time) {
-        return i;
-      }
-    }
-    return null;
-  };
-
-  const didSongFinish = () => {
+  const didSongFinish = async () => {
     if (selectedSongIndex === null) return;
-    const currentEndCue = songCuePairs[selectedSongIndex].song[1];
-    const doesStop = songCuePairs[selectedSongIndex].doesStop;
+    const songLength = songCuePairs[selectedSongIndex].songLength;
+    const timeRemaining = songLength - props.beatCounter;
+    const isSongNearEnd = timeRemaining <= 5;
 
-    if (currentEndCue.time <= props.time) {
-      props.stopPlaying();
-      let nextSongIndex = null;
-      if (selectedSongIndex + 1 < songCuePairs.length) {
-        nextSongIndex = selectedSongIndex + 1;
-      }
-      if (nextSongIndex !== null) {
-        props.onSongSelected(songCuePairs[nextSongIndex]);
-        setSelectedSongIndex(nextSongIndex);
-      }
-      if (!doesStop && nextSongIndex !== null) {
-        props.startPlaying();
+    if (!isSongNearEnd) return;
+
+    const doesStop = songCuePairs[selectedSongIndex].doesStop;
+    const songEndTime = songCuePairs[selectedSongIndex].song[1].time;
+
+    await props.fetchTime();
+
+    if (props.time !== 0 && songEndTime <= props.time) {
+      await props.stopPlaying();
+
+      const nextSongIndex = selectedSongIndex + 1;
+
+      if (nextSongIndex < songCuePairs.length) {
+        await props.onSongSelected(songCuePairs[nextSongIndex]);
+        setSelectedSongIndex(() => {
+          return nextSongIndex;
+        });
+        if (!doesStop) await props.startPlaying();
       }
     }
-    return;
   };
 
   useEffect(() => {
     if (songCuePairs.length) {
-      const activeSongIndex = findActiveSongIndex();
-      if (activeSongIndex !== null && !props.isPlaying) {
-        setSelectedSongIndex(activeSongIndex);
-        console.log(songCuePairs[activeSongIndex]);
-        props.onSongSelected(songCuePairs[activeSongIndex]);
-      } else {
-        didSongFinish();
-      }
+      if (props.isPlaying) didSongFinish();
     }
-  }, [props.time, songCuePairs]);
+  }, [props.beatCounter, songCuePairs]);
 
   useEffect(() => {
     const getFetchedCues = async () => {
@@ -159,15 +100,14 @@ export default function CuesTable(props: CuesTableProps): JSX.Element {
 
   const handleRowClick = (index: number) => {
     setSelectedSongIndex(index);
-    if (props.onSongSelected) {
-      props.onSongSelected(songCuePairs[index]);
-    }
+    props.onSongSelected?.(songCuePairs[index]);
   };
 
   return (
     <div className="cues-table">
-      {/* {isLoading && <h2>Loading...</h2>} */}
-      {songCuePairs.length > 0 ? (
+      {isLoading ? (
+        <h2>Loading...</h2>
+      ) : songCuePairs.length > 0 ? (
         <table>
           <thead>
             <tr>
